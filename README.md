@@ -21,7 +21,7 @@ It is a POSIX shell script (tested against BusyBox's `ash`) and depends only on 
 	or: scriptbox usage
 	or: scriptbox examples
 	or: scriptbox version
-	or: scriptbox help'
+	or: scriptbox help
 ```
 
 ## Examples
