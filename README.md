@@ -1,6 +1,6 @@
 # Scriptbox
 
-Scriptbox (inspired by [BusyBox](https://www.busybox.net/)) is a shell script that encapsulates other shell scripts for portability. It contains the logic required to add and remove scripts (see `add`, `remove`, `replace` and `pack` commands), produce a slim version of itself containing no other scripts (`base`) and spit out links to each of its scripts (`install`), as well as standalone versions of the scripts it contains (`pop` and `unpack`). The scripts are stored internally as functions.\
+Scriptbox (inspired by [BusyBox](https://www.busybox.net/)) is a shell script that encapsulates other shell scripts for portability. It contains the logic required to add and remove scripts (see `add`, `remove`, `replace` and `pack` commands), produce a slim version of itself containing no other scripts (`base`) and spit out links to each of its scripts (`install`), as well as standalone versions of the scripts it contains (`pop` and `unpack`). The scripts are stored internally as functions.
 
 It is a POSIX shell script (tested against BusyBox's `ash`) and depends only on common tools included within a typical BusyBox binary (`cut`, `realpath`, `basename`, `head`, *etc*). 
 
@@ -35,21 +35,21 @@ scriptbox pack myscripts/*
 
 find myscripts/ -type f -name "*.sh" -not -name "_*" | scriptbox.sh pack
 	add all of the scripts under the "myscripts" directory, excluding ones that start
-    with an underscore:
+	with an underscore:
 
 scriptbox install --symlink /usr/local/bin
-	create a named symlink in /usr/local/bin for each script in the scriptbox'
+	create a named symlink in /usr/local/bin for each script in scriptbox
 ```
 
 ## Quirks
 
 ### #!/bin/sh
 
-Scriptbox was designed with portability in mind, the shebang therefore points to `/bin/sh`. Since this is usually a POSIX shell (not bash), including bashisms in your scripts will cause errors by default.\
+Scriptbox was designed with portability in mind, the shebang therefore points to `/bin/sh`. Since this is usually a POSIX shell (not bash), including bashisms in your scripts will cause errors by default.
 
-If you want to include bash (or Zsh, or whatever) *-isms* , change the shebang on first line, as well as the `shebang` variable at the very start of the `scriptbox()` function; note that if you then `pop` scripts out of scriptbox, they will include the new shebang.\
+If you want to include bash (or Zsh, or whatever) *-isms* , change the shebang on first line, as well as the `shebang` variable at the very start of the `scriptbox()` function; note that if you then `pop` scripts out of scriptbox, they will include the new shebang.
 
-In short: you can not safely mix scripts meant to be executed by different shells within scriptbox.\
+In short: you can not safely mix scripts meant to be executed by different shells within scriptbox.
 
 ### Add comments to the end of the file
 
