@@ -1,0 +1,41 @@
+scriptbox(){
+    local cur prev opts scriptlist
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    opts="add base examples help install list pack pop remove replace unpack usage version wrap"
+	scriptlist="$(scriptbox list)"
+
+	case "$prev" in
+		"scriptbox")
+			COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+			;;
+		"pop"|"remove"|"replace")
+			COMPREPLY=( $(compgen -W "${scriptlist}" -- ${cur}) )
+			;;
+		"add"|"wrap"|"pack")
+			compopt -o filenames
+			COMPREPLY=( $(compgen -f ${cur}) )
+			;;
+		"install")
+			COMPREPLY=( $(compgen -W "--symlink --hardlink" -- ${cur}) )
+			;;
+		"unpack")
+			compopt -o dirnames
+			COMPREPLY=( $(compgen -d ${cur}) )
+			;;
+		*)
+			if [ "${COMP_WORDS[1]}" = "replace" -a "${COMP_CWORD}" -lt 4 ]; then
+				compopt -o filenames
+				COMPREPLY=( $(compgen -f "${cur}") )
+			elif [ "${COMP_WORDS[1]}" = "install" -a "${COMP_CWORD}" -lt 4 ]; then
+				compopt -o dirnames
+				COMPREPLY=( $(compgen -d "${cur}") )
+			fi
+			;;
+	esac
+
+	return 0
+}
+
+complete -F _scriptbox scriptbox

@@ -7,7 +7,7 @@ scriptlist=""
 scriptbox(){
 	local shebang='#!/bin/sh'
 	local usagetext='USAGE: scriptbox [scriptname [arguments]...]
-   or: scriptbox install   [symlink]       <dir>
+   or: scriptbox install   {-s|-h}            <dir>
    or: scriptbox add       <path/to/script>
    or: scriptbox pack      <path/to/script>  [path/to/other/script]...
    or: scriptbox remove    <script name>
@@ -20,7 +20,10 @@ scriptbox(){
    or: scriptbox usage
    or: scriptbox examples
    or: scriptbox version
-   or: scriptbox help'
+   or: scriptbox help
+
+   Options can also be expressed in long form (--install, --add) or
+   short form (first letter of the word: -i, -a)'
 
 	local helptext='scriptbox (inspired by BusyBox) is a script that encapsulates other
 scripts for portability. It contains the logic required to add and remove scripts
@@ -133,12 +136,14 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
 	# target directory. Each link is named after a function/script.
 	sb_install(){
 		case "$1" in
-			"s"|"symlink"|"-s"|"--symlink")
+			"-s"|"--symlink")
 				local installdir="$2"
 				local linkopts="-sv" ;;
-			*)
-				local installdir="$1"
+			"-h"|"--hardlink")
+				local installdir="$2"
 				local linkopts="-v" ;;
+			*)
+				sb_die "Do you want to symlink or hardlink?"
 		esac
 
 		if [ ! -r "$installdir" -o ! -d "$(realpath $installdir 2>/dev/null)" ]; then
