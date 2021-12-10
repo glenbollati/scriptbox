@@ -1,41 +1,42 @@
-scriptbox(){
+# these would normally go in .local/share/bash-completion/completions/
+# but i like them in my .bashrc
+_scriptbox(){
     local cur prev opts scriptlist
-    COMPREPLY=()
-    cur="${COMP_WORDS[COMP_CWORD]}"
-    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    compreply=()
+    cur="${comp_words[comp_cword]}"
+    prev="${comp_words[comp_cword-1]}"
     opts="add base examples help install list pack pop remove replace unpack usage version wrap"
 	scriptlist="$(scriptbox list)"
-
+	
 	case "$prev" in
 		"scriptbox")
-			COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+			compreply=( $(compgen -w "${opts}" -- ${cur}) )
 			;;
 		"pop"|"remove"|"replace")
-			COMPREPLY=( $(compgen -W "${scriptlist}" -- ${cur}) )
+			compreply=( $(compgen -w "${scriptlist}" -- ${cur}) )
 			;;
 		"add"|"wrap"|"pack")
 			compopt -o filenames
-			COMPREPLY=( $(compgen -f ${cur}) )
+			compreply=( $(compgen -f ${cur}) )
 			;;
 		"install")
-			COMPREPLY=( $(compgen -W "--symlink --hardlink" -- ${cur}) )
+			compreply=( $(compgen -w "--symlink --hardlink" -- ${cur}) )
 			;;
 		"unpack")
-			compopt -o dirnames
-			COMPREPLY=( $(compgen -d ${cur}) )
+			compopt -o plusdirs -o nospace
+			compreply=( $(compgen -d ${cur}) )
 			;;
 		*)
-			if [ "${COMP_WORDS[1]}" = "replace" -a "${COMP_CWORD}" -lt 4 ]; then
+			if [ "${comp_words[1]}" = "replace" -a "${comp_cword}" -lt 4 ]; then
 				compopt -o filenames
-				COMPREPLY=( $(compgen -f "${cur}") )
-			elif [ "${COMP_WORDS[1]}" = "install" -a "${COMP_CWORD}" -lt 4 ]; then
-				compopt -o dirnames
-				COMPREPLY=( $(compgen -d "${cur}") )
+				compreply=( $(compgen -f "${cur}") )
+			elif [ "${comp_words[1]}" = "install" -a "${comp_cword}" -lt 4 ]; then
+				compopt -o plusdirs -o nospace
+				compreply=( $(compgen -d "${cur}") )
 			fi
 			;;
 	esac
 
 	return 0
 }
-
-complete -F _scriptbox scriptbox
+complete -f _scriptbox scriptbox

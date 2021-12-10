@@ -5,8 +5,8 @@ scriptlist=""
 
 #_sb_### Start: scriptbox ###_sb_#
 scriptbox(){
-	local shebang='#!/bin/sh'
-	local usagetext='USAGE: scriptbox [scriptname [arguments]...]
+	shebang='#!/bin/sh'
+	usagetext='USAGE: scriptbox [scriptname [arguments]...]
    or: scriptbox install   {-s|-h}            <dir>
    or: scriptbox add       <path/to/script>
    or: scriptbox pack      <path/to/script>  [path/to/other/script]...
@@ -25,13 +25,13 @@ scriptbox(){
    Options can also be expressed in long form (--install, --add) or
    short form (first letter of the word: -i, -a)'
 
-	local helptext='scriptbox (inspired by BusyBox) is a script that encapsulates other
+	helptext='scriptbox (inspired by BusyBox) is a script that encapsulates other
 scripts for portability. It contains the logic required to add and remove scripts
 (see "add", "remove", "replace" and "pack" commands), produce a slim version of itself,
 containing no other scripts ("base" command), produce links to each of its scripts ("install"),
 and spit out standalone versions of the scripts it contains ("pop" and "unpack").'
 
-	local examples='EXAMPLES
+	examples='EXAMPLES
   scriptbox add <path/to/script.sh>
 	  add a script to the box
 
@@ -45,15 +45,20 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
   scriptbox install --symlink /usr/local/bin
 	  create a named symlink in /usr/local/bin for each script in the scriptbox'
 
-	local version="scriptbox version 1.8"
-	local tmpfile=/tmp/scriptbox
+	version='scriptbox version 1.9'
+	tmpfile=/tmp/scriptbox
 	
 	sb_help(){
-		local list="$(sb_list_compact)"
 		if [ -n "$list" ]; then
-			printf "%s\n\n%s\n\n%s\n\n%s\n\n%s\n" "$version" "$helptext" "$usagetext" "$examples" "$(sb_list_compact)"
+			for i in "$version" "$helptext" "$usagetext" "$examples"; do
+				printf "%s\n\n" "$i"
+			done
+			printf "%s\n" "$(sb_list_compact)"
 		else
-			printf "%s\n\n%s\n\n%s\n\n%s\n" "$version" "$helptext" "$usagetext" "$examples"
+			for i in "$version" "$helptext" "$usagetext"; do
+				printf "%s\n\n" "$i"
+			done
+			printf "%s\n" "$examples"
 		fi
 		exit 0
 	}
@@ -65,10 +70,10 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
 
 	# sb_list_compact prints a nicely formatted list of the currently defined functions
 	sb_list_compact(){
-		local list=$(sb_list | tr "\n" " " | \
+		list=$(sb_list | tr "\n" " " | \
 		sed 's/ /, /g ; s/, $//g' | \
 		fold -sw 70 | sed 's/^/	/g')
-		[ -n "$list" ] && printf "%s\n%s\n" "CURRENTLY DEFINED SCRIPTS" "$list"
+		[ -n "$list" ] && printf "%s\n%s\n" 'CURRENTLY DEFINED SCRIPTS' "$list"
 	}
 
 	# sb_die prints a message to stderr and exits with error code 1
@@ -80,12 +85,12 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
 	# sb_linenum returns the line number at which the script ($2) starts or ends ($1)
 	sb_linenum(){
 		case "$1" in
-			"start") local pattern="#_sb_### Start: $2" ;;
-			"end") local pattern="#_sb_### End: $2" ;;
-			"") local pattern="$2" ;;
+			"start") pattern="#_sb_### Start: $2" ;;
+			"end") pattern="#_sb_### End: $2" ;;
+			"") pattern="$2" ;;
 			*) sb_die "Could not find line number of pattern: $2, invalid prefix: $1"
 		esac
-		grep -Fn -m 1 "$pattern" $boxpath | cut -d ':' -f 1
+		grep -Fn -m 1 "$pattern" "$boxpath" | cut -d ':' -f 1
 	}
 
 	# sb_contains returns whether or not the box contains the function
@@ -112,23 +117,19 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
 	# sb_print_headless prints the contents of the scriptbox file (minus the head)
 	# if $2 is provided, it reads from $2 instead of the current box file
 	sb_print_headless(){
-		local boxbodystart="$(sb_linenum "start")"
-		if [ -n "$1" ]; then
-			printf "%s" "$1" | tail -n+$boxbodystart
-		else
-			tail -n+$boxbodystart $boxpath
-		fi
+		boxbodystart="$(sb_linenum "start")"
+		tail -n+"$boxbodystart" "$boxpath"
 	}
 
 	# sb_pop prints the selected function as a standalone script
 	# it expects $1 to be the name of a function
 	sb_pop(){
 		sb_contains "$1" || sb_die "No matching script ($1)"
-		local funcstart=$(sb_linenum "start" "$1" + 2)
-		local funcend=$(sb_linenum "end" "$1")
-		local funcstart=$(($funcstart + 2))
-		local funcend=$(($funcend - 2))
-		local func=$(head -n"$funcend" $boxpath| tail -n+"$funcstart" | sed 's/^	//g')
+		funcstart=$(sb_linenum "start" "$1" + 2)
+		funcend=$(sb_linenum "end" "$1")
+		funcstart=$((funcstart + 2))
+		funcend=$((funcend - 2))
+		func=$(head -n"$funcend" "$boxpath"| tail -n+"$funcstart" | sed 's/^	//g')
 		printf "%s\n\n%s\n" "$shebang" "$func"
 	}
 
@@ -136,21 +137,17 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
 	# target directory. Each link is named after a function/script.
 	sb_install(){
 		case "$1" in
-			"-s"|"--symlink")
-				local installdir="$2"
-				local linkopts="-sv" ;;
-			"-h"|"--hardlink")
-				local installdir="$2"
-				local linkopts="-v" ;;
-			*)
-				sb_die "Do you want to symlink or hardlink?"
+			"-s"|"--symlink")  installdir="$2"; linkopts="-sv" ;;
+			"-h"|"--hardlink") installdir="$2"; linkopts="-v" ;;
+			*) sb_die "Do you want to symlink or hardlink?"
 		esac
 
-		if [ ! -r "$installdir" -o ! -d "$(realpath $installdir 2>/dev/null)" ]; then
+		if [ ! -r "$installdir" ] || [ ! -d "$(realpath "$installdir" 2>/dev/null)" ]; then
 			sb_die "You must provide a path to install to (and it must be readable)"
 		fi
+
 		for i in $scriptlist; do
-			ln $linkopts "$boxpath" "$(realpath $installdir)/$i"
+			ln "$linkopts" "$boxpath" "$(realpath "$installdir")/$i"
 		done
 	}
 
@@ -158,12 +155,15 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
 	# and encapsulating the body in a function. It expects a function name to assign
 	# to it as $1 and the path to the script as $2
 	sb_wrap(){
-		[ -n "$1" -a -n "$2" ] && local name="$1" \
-							   || sb_die "You must provide a name and the path to the script"
+		if [ -n "$1" ] && [ -n "$2" ]; then
+			name="$1"
+		else
+			sb_die "You must provide a name and the path to the script"
+		fi
 
 		[ -r "$2" ] || sb_die "Invalid script ($2), does it exist and is it readable?"
 
-		local indentedbody="$(tail -n +2 $2 | sed 's/^/	/g')"
+		indentedbody="$(tail -n +2 "$2" | sed 's/^/	/g')"
 
 		printf "%s\n%s\n%s\n%s\n%s\n" \
 				"#_sb_### Start: $name ###_sb_#" \
@@ -174,51 +174,54 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
 	# sb_validate takes a file name as input and validates it for inclusion in the box
 	sb_validate(){
 		[ -r "$1" ] || sb_die "Error: could not find/read script ($1)."
-		local lineone="$(head -n1 $1 | xargs)"
+		lineone="$(head -n1 "$1" | xargs)"
 		[ "$lineone" = "$shebang" ] || sb_die "Error in first line of script: \"$1\", expected: \"$shebang\", found: \"$lineone\""
-		local scriptname="$(basename $1 | rev | cut -d '.' -f 2- | rev | sed 's/-/_/g')"
+		scriptname="$(basename "$1" | rev | cut -d '.' -f 2- | rev | sed 's/-/_/g')"
 		sb_contains "$scriptname" && sb_die "Error: trying to add script \"$scriptname\" but a script with this name already exists in the box."
 	}
 
-	# sb_add creates a new box with the target script included
+	# sb_add creates a new box with the target scripts included
 	# the new box is printed to stdout. It expects a path to a script as $1.
 	sb_add(){
-		sb_validate "$1"
-		local scriptname="$(basename $1 | rev | cut -d '.' -f 2- | rev | sed 's/-/_/g')"
-		# xargs to squeeze whitespace and remove leading and trailing
-		scriptlist="$(printf "%s" "$scriptname $scriptlist" | xargs)"
-		sb_print_head "$scriptlist" > $tmpfile
-		printf "%s\n\n" "$(sb_wrap $scriptname $1)" >> $tmpfile
-		sb_print_headless >> $tmpfile
-		cp $tmpfile $boxpath && exit
+		while [ -n "$1" ]; do
+			sb_validate "$1"
+			scriptname="$(basename "$1" | rev | cut -d '.' -f 2- | rev | sed 's/-/_/g')"
+			# xargs to squeeze whitespace and remove leading and trailing
+			scriptlist="$(printf "%s" "$scriptname $scriptlist" | xargs)"
+			sb_print_head "$scriptlist" > $tmpfile
+			printf "%s\n\n" "$(sb_wrap "$scriptname" "$1")" >> "$tmpfile"
+			sb_print_headless >> "$tmpfile"
+			cp "$tmpfile" "$boxpath" && exit
+			shift
+		done
 	}
 
 	# sb_remove creates a new version of the box with the target script removed
 	sb_remove(){
 		sb_contains "$1" || sb_die "No matching script ($1)"
-		local newscriptlist="$(printf "%s" "$scriptlist" | sed "s/\b$1\b//g" | tr -s ' ')"
+		newscriptlist="$(printf "%s" "$scriptlist" | sed "s/\b$1\b//g" | tr -s ' ')"
 
 		# Collect lines before the start of the function (excluding the head) and
 		# after the end of the function, then print the head followed by this new body
-		local topstart="$(sb_linenum "start")"
-		local topend="$(( $(sb_linenum "start" "$1") - 1 ))"
-		local botstart="$(( $(sb_linenum "end" "$1") + 1 ))"
+		topstart="$(sb_linenum "start")"
+		topend="$(( $(sb_linenum "start" "$1") - 1 ))"
+		botstart="$(( $(sb_linenum "end" "$1") + 1 ))"
 
-		local top="$(head -n "$topend" $boxpath | tail -n +$topstart)"
-		local bot="$(tail -n +"$botstart" $boxpath)"
+		top="$(head -n "$topend" "$boxpath" | tail -n +"$topstart")"
+		bot="$(tail -n +"$botstart" "$boxpath")"
 
 		# If the removed function is the first in the script, an extra blank line
 		# would appear without this
-		if [ $topstart -gt $topend ]; then
-			sb_print_head "$newscriptlist" | head -n -1 > $tmpfile
+		if [ "$topstart" -gt "$topend" ]; then
+			sb_print_head "$newscriptlist" | head -n -1 > "$tmpfile"
 		else
-			sb_print_head "$newscriptlist" > $tmpfile
+			sb_print_head "$newscriptlist" > "$tmpfile"
 		fi
 
-		[ -n "$top" ] && printf "%s\n" "$top" >> $tmpfile
-		[ -n "$bot" ] && printf "%s\n" "$bot" >> $tmpfile
+		[ -n "$top" ] && printf "%s\n" "$top" >> "$tmpfile"
+		[ -n "$bot" ] && printf "%s\n" "$bot" >> "$tmpfile"
 		scriptlist="$newscriptlist"
-		cp $tmpfile $boxpath
+		cp "$tmpfile" "$boxpath"
 	}
 
 	# sb_replace replaces the script named $1 with the external script named $2
@@ -234,49 +237,52 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
 		[ -z "$1" ] && sb_die "You must provide the path to at least one script to include"
 		for i in "$@"; do
 			sb_validate "$i"
-			local scriptname="$(basename $i | rev | cut -d '.' -f 2- | rev | sed 's/-/_/g')"
+			scriptname="$(basename "$i" | rev | cut -d '.' -f 2- | rev | sed 's/-/_/g')"
 
-			[ -z "$newscriptlist" ] && local newscriptlist="$scriptname" \
-									|| local newscriptlist="$newscriptlist $scriptname"
+			[ -z "$newscriptlist" ] && newscriptlist="$scriptname" \
+									|| newscriptlist="$newscriptlist $scriptname"
 
-			local newscript="$(sb_wrap "$scriptname" "$i")"
-			[ -z "$newbox" ] && local newbox="$(printf "%s\n\n" "$newscript")" \
-							 || local newbox="$(printf "%s\n\n%s\n" "$newbox" "$newscript")"
+			newscript="$(sb_wrap "$scriptname" "$i")"
+			[ -z "$newbox" ] && newbox="$(printf "%s\n\n" "$newscript")" \
+							 || newbox="$(printf "%s\n\n%s\n" "$newbox" "$newscript")"
 		done
 
-		sb_print_head "$newscriptlist" > $tmpfile
-		printf "%s\n%s\n" "$newbox" "$(sb_base)" >> $tmpfile
-		cp $tmpfile $boxpath
+		sb_print_head "$newscriptlist" > "$tmpfile"
+		printf "%s\n%s\n" "$newbox" "$(sb_base)" >> "$tmpfile"
+		cp "$tmpfile" "$boxpath"
 	}
 
 	# sb_unpack creates creates a script from each of the scripts in the box.
 	# The scripts are placed in the directory specified by $1
 	sb_unpack(){
-		local errmsg="You must provide a directory to unpack to"
+		errmsg="You must provide a directory to unpack to"
 		[ -n "$1" ] || sb_die "$errmsg"
-		[ -r "$1" -a -d "$(realpath $1)" ] || sb_die "$errmsg (and it must be readable)"
+
+		if [ ! -r "$1" ] || [ ! -d "$(realpath "$1")" ]; then
+			sb_die "$errmsg (and it must be readable)"
+		fi
 
 		# Opting to loop twice to avoid interrupting in the middle, being left with a partial unpack
 		for i in $scriptlist; do
-			local file="$(realpath $1)/$i"	
+			file="$(realpath "$1")/$i"	
 			[ -f "$file" ] && sb_die "File exists, rename, move or delete it ($file)"
 		done
 
 		for i in $scriptlist; do
-			local file="$(realpath $1)/$i"	
-			sb_pop "$i" > $file
+			file="$(realpath "$1")/$i"	
+			sb_pop "$i" > "$file"
 		done
 	}
 
 	sb_replicate(){
 		if [ -n "$1" ]; then
-			local fpath="$(realpath $1)"
-			[ -f $fpath ] && sb_die "Error: file \"$fpath\" exists, refusing to overwrite."
+			fpath="$(realpath "$1")"
+			[ -f "$fpath" ] && sb_die "Error: file \"$fpath\" exists, refusing to overwrite."
 		else
-			local fpath=/dev/stdout
+			fpath=/dev/stdout
 		fi
-		sb_print_head > $fpath
-		sb_base >> $fpath
+		sb_print_head > "$fpath"
+		sb_base >> "$fpath"
 	}
 
 	### Entry point ###
@@ -284,14 +290,15 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
 	boxpath=$(realpath "$0")
 
 	# If input for the command was not provided then search in pipe
-	[ -z "$2" -a -p /dev/stdin ] && set -- "$1" $(cat)
+	[ -z "$2" ] && [ -p /dev/stdin ] && set -- "$1" "$(cat)"
 
 	# If the name of the script matches one of its listed functions (scripts),
 	# run that function
 	if sb_contains "$calledas"; then
 		$calledas "$@"
+		unset boxpath
 	elif [ -n "$1" ] && sb_contains "$1"; then
-		local script="$1"
+		script="$1"
 		shift; $script "$@"
 	else
 		case "$1" in
@@ -306,7 +313,7 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
 			"base"|    "--base"|    "-b")  shift; sb_replicate "$1" ;;
 			"help"|    "--help"|    "-h")  sb_help ;;
 			"list"|    "--list"|    "-l")  sb_exit "$(sb_list)" ;;
-			"usage"|   "--usage"|   "-u")  sb_exit "$usagetext" ;;
+			"usage"|   "--usage"        )  sb_exit "$usagetext" ;;
 			"version"| "--version"| "-v")  sb_exit "$version" ;;
 			"examples"|"--examples"|"-e")  sb_exit "$examples" ;;
 			"")                            sb_die "$usagetext" ;;
