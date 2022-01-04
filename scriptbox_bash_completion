@@ -1,3 +1,5 @@
+#!/bin/bash 
+
 # these would normally go in .local/share/bash-completion/completions/
 # but i like them in my .bashrc
 _scriptbox(){
@@ -28,7 +30,7 @@ _scriptbox(){
 			;;
 		*)
 			case "${COMP_WORDS[1]}" in
-				"add"|"base")
+				"add"|"base"|"pop")
 					compopt -o filenames
 					COMPREPLY=( $(compgen -f "${cur}") )
 					;;
