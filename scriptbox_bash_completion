@@ -2,41 +2,51 @@
 # but i like them in my .bashrc
 _scriptbox(){
     local cur prev opts scriptlist
-    compreply=()
-    cur="${comp_words[comp_cword]}"
-    prev="${comp_words[comp_cword-1]}"
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
     opts="add base examples help install list pack pop remove replace unpack usage version wrap"
 	scriptlist="$(scriptbox list)"
 	
 	case "$prev" in
 		"scriptbox")
-			compreply=( $(compgen -w "${opts}" -- ${cur}) )
+			COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 			;;
 		"pop"|"remove"|"replace")
-			compreply=( $(compgen -w "${scriptlist}" -- ${cur}) )
+			COMPREPLY=( $(compgen -W "${scriptlist}" -- ${cur}) )
 			;;
 		"add"|"wrap"|"pack")
 			compopt -o filenames
-			compreply=( $(compgen -f ${cur}) )
+			COMPREPLY=( $(compgen -f ${cur}) )
 			;;
 		"install")
-			compreply=( $(compgen -w "--symlink --hardlink" -- ${cur}) )
+			COMPREPLY=( $(compgen -W "--symlink --hardlink" -- ${cur}) )
 			;;
 		"unpack")
 			compopt -o plusdirs -o nospace
-			compreply=( $(compgen -d ${cur}) )
+			COMPREPLY=( $(compgen -d ${cur}) )
 			;;
 		*)
-			if [ "${comp_words[1]}" = "replace" -a "${comp_cword}" -lt 4 ]; then
-				compopt -o filenames
-				compreply=( $(compgen -f "${cur}") )
-			elif [ "${comp_words[1]}" = "install" -a "${comp_cword}" -lt 4 ]; then
-				compopt -o plusdirs -o nospace
-				compreply=( $(compgen -d "${cur}") )
-			fi
+			case "${COMP_WORDS[1]}" in
+				"add"|"base")
+					compopt -o filenames
+					COMPREPLY=( $(compgen -f "${cur}") )
+					;;
+				"replace")
+					if [ "${COMP_CWORD}" -lt 4 ]; then 
+						compopt -o filenames
+						COMPREPLY=( $(compgen -f "${cur}") )
+					fi ;;
+				"install")
+					if [ "${COMP_CWORD}" -lt 4 ]; then 
+					compopt -o plusdirs -o nospace
+					COMPREPLY=( $(compgen -d "${cur}") )
+					fi
+					;;
+			esac
 			;;
 	esac
 
 	return 0
 }
-complete -f _scriptbox scriptbox
+complete -F _scriptbox scriptbox
