@@ -45,7 +45,7 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
   scriptbox install --symlink /usr/local/bin
 	  create a named symlink in /usr/local/bin for each script in the scriptbox'
 
-	version='scriptbox version 1.9'
+	version='scriptbox version 2.0'
 	tmpfile=/tmp/scriptbox
 	
 	sb_help(){
@@ -79,18 +79,27 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
 	# sb_die prints a message to stderr and exits with error code 1
 	sb_die(){ printf "%s\n" "$1" 1>&2; exit 1; }
 
+	# debug prints a message to stderr
+	# debug(){ printf "%s\n" "$1" 1>&2 }
+
 	# sb_exit prints a message and exits with error code 0
 	sb_exit(){ printf "%s\n" "$1"; exit 0; }
 	
 	# sb_linenum returns the line number at which the script ($2) starts or ends ($1)
 	sb_linenum(){
 		case "$1" in
-			"start") pattern="#_sb_### Start: $2" ;;
-			"end") pattern="#_sb_### End: $2" ;;
+			"start") pattern="#_sb_### Start: $2 ###_sb_#" ;;
+			"end") pattern="#_sb_### End: $2 ###_sb_#" ;;
 			"") pattern="$2" ;;
 			*) sb_die "Could not find line number of pattern: $2, invalid prefix: $1"
 		esac
 		grep -Fn -m 1 "$pattern" "$boxpath" | cut -d ':' -f 1
+	}
+
+	# sb_boxbodystart returns the line number of the start of the first added
+	# script (the start of the main body of the box)
+	sb_boxbodystart(){
+		sb_linenum "start" "$(printf "%s" "$scriptlist" | cut -d' ' -f1)"
 	}
 
 	# sb_contains returns whether or not the box contains the function
@@ -114,12 +123,6 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
 				"scriptlist=\"$1\""
 	}
 
-	# sb_print_headless prints the contents of the scriptbox file (minus the head)
-	# if $2 is provided, it reads from $2 instead of the current box file
-	sb_print_headless(){
-		boxbodystart="$(sb_linenum "start")"
-		tail -n+"$boxbodystart" "$boxpath"
-	}
 
 	# sb_pop prints the selected function as a standalone script
 	# it expects $1 to be the name of a function
@@ -130,7 +133,7 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
 		funcstart=$((funcstart + 2))
 		funcend=$((funcend - 2))
 		func=$(head -n"$funcend" "$boxpath"| tail -n+"$funcstart" | sed 's/^	//g')
-		printf "%s\n\n%s\n" "$shebang" "$func"
+		printf "%s\n%s\n" "$shebang" "$func"
 	}
 
 	# sb_install creates a link to itself for each of its functions (scripts) in the
@@ -173,24 +176,28 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
 
 	# sb_validate takes a file name as input and validates it for inclusion in the box
 	sb_validate(){
-		[ -r "$1" ] || sb_die "Error: could not find/read script ($1)."
+		[ -r "$1" ] || sb_die "Error: could not find/read \"$1\"."
+
 		lineone="$(head -n1 "$1" | xargs)"
-		[ "$lineone" = "$shebang" ] || sb_die "Error in first line of script: \"$1\", expected: \"$shebang\", found: \"$lineone\""
+		[ "$lineone" = "$shebang" ] \
+			|| sb_die "Error in \"$1\" (line 1), expected: \"$shebang\", found: \"$lineone\""
+
 		scriptname="$(basename "$1" | rev | cut -d '.' -f 2- | rev | sed 's/-/_/g')"
-		sb_contains "$scriptname" && sb_die "Error: trying to add script \"$scriptname\" but a script with this name already exists in the box."
+		sb_contains "$scriptname" && \
+			sb_die "Error: trying to add \"$scriptname\" but a script with this name already exists in the box."
 	}
 
-	# sb_add creates a new box with the target scripts included
-	# the new box is printed to stdout. It expects a path to a script as $1.
+	# sb_add creates a new version of itself with the target scripts included
 	sb_add(){
 		while [ -n "$1" ]; do
 			sb_validate "$1"
 			scriptname="$(basename "$1" | rev | cut -d '.' -f 2- | rev | sed 's/-/_/g')"
 			# xargs to squeeze whitespace and remove leading and trailing
-			scriptlist="$(printf "%s" "$scriptname $scriptlist" | xargs)"
-			sb_print_head "$scriptlist" > $tmpfile
+			newscriptlist="$(printf "%s" "$scriptname $scriptlist" | xargs)"
+			sb_print_head "$newscriptlist" > $tmpfile
 			printf "%s\n\n" "$(sb_wrap "$scriptname" "$1")" >> "$tmpfile"
-			sb_print_headless >> "$tmpfile"
+			# Print main body of the box (everything starting from the first added function)
+			tail -n+"$(sb_boxbodystart)" "$boxpath" >> "$tmpfile"
 			cp "$tmpfile" "$boxpath" && exit
 			shift
 		done
@@ -199,11 +206,12 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
 	# sb_remove creates a new version of the box with the target script removed
 	sb_remove(){
 		sb_contains "$1" || sb_die "No matching script ($1)"
-		newscriptlist="$(printf "%s" "$scriptlist" | sed "s/\b$1\b//g" | tr -s ' ')"
+		#newscriptlist="$(printf "%s" "$scriptlist" | sed "s/\b$1\b//g" | tr -s ' ')"
+		newscriptlist="$(printf "%s" "$scriptlist" | sed "s/\b$1\b//g" | xargs)"
 
 		# Collect lines before the start of the function (excluding the head) and
 		# after the end of the function, then print the head followed by this new body
-		topstart="$(sb_linenum "start")"
+		topstart="$(sb_boxbodystart)"
 		topend="$(( $(sb_linenum "start" "$1") - 1 ))"
 		botstart="$(( $(sb_linenum "end" "$1") + 1 ))"
 
@@ -285,7 +293,7 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
 		sb_base >> "$fpath"
 	}
 
-	### Entry point ###
+	# --- Entry point ---
 	calledas=$(basename "$0")
 	boxpath=$(realpath "$0")
 
