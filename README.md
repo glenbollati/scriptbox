@@ -1,5 +1,4 @@
 # Scriptbox
-
 Scriptbox (inspired by [BusyBox](https://www.busybox.net/)) is a shell script that encapsulates other shell scripts for portability. It contains the logic required to add and remove scripts (see `add`, `remove`, `replace` and `pack` commands), produce a slim version of itself containing no other scripts (`base`) and spit out links to each of its scripts (`install`), as well as standalone versions of the scripts it contains (`pop` and `unpack`). The scripts are stored internally as functions.
 
 It is a POSIX shell script (tested against BusyBox's `ash`) and depends only on common tools included within a typical BusyBox binary (`cut`, `realpath`, `basename`, `head`, *etc*). 
@@ -40,6 +39,16 @@ find myscripts/ -type f -name "*.sh" -not -name "_*" | scriptbox.sh pack
 scriptbox install --symlink /usr/local/bin
 	create a named symlink in /usr/local/bin for each script in scriptbox
 ```
+
+## A recommended addition: `msb`
+
+I find it useful to include a script to quickly jump to a function (script) within scriptbox for modification, my version is the following one-liner, which I save as `msb`:
+
+```sh
+sudo vi +"/^$@.*(){" $(which scriptbox) -c 'normal zt'
+```
+
+I've included it as a separate script.
 
 ## Quirks
 
