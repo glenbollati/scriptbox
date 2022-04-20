@@ -1,0 +1,2 @@
+#!/bin/sh
+sudo vi +"/^$@.*(){" $(which scriptbox) -c 'normal zt'

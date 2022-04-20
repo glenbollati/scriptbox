@@ -45,7 +45,7 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
   scriptbox install --symlink /usr/local/bin
 	  create a named symlink in /usr/local/bin for each script in the scriptbox'
 
-	version='scriptbox version 2.0'
+	version='scriptbox version 2.1'
 	tmpfile=/tmp/scriptbox
 	
 	sb_help(){
@@ -99,7 +99,9 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
 	# sb_boxbodystart returns the line number of the start of the first added
 	# script (the start of the main body of the box)
 	sb_boxbodystart(){
-		sb_linenum "start" "$(printf "%s" "$scriptlist" | cut -d' ' -f1)"
+		firstscript="$(printf "%s" "$scriptlist" | cut -d' ' -f1)"
+		[ -n "$firstscript" ] || firstscript="scriptbox"
+		sb_linenum "start" "$firstscript"
 	}
 
 	# sb_contains returns whether or not the box contains the function
@@ -196,6 +198,7 @@ and spit out standalone versions of the scripts it contains ("pop" and "unpack")
 			newscriptlist="$(printf "%s" "$scriptname $scriptlist" | xargs)"
 			sb_print_head "$newscriptlist" > $tmpfile
 			printf "%s\n\n" "$(sb_wrap "$scriptname" "$1")" >> "$tmpfile"
+
 			# Print main body of the box (everything starting from the first added function)
 			tail -n+"$(sb_boxbodystart)" "$boxpath" >> "$tmpfile"
 			cp "$tmpfile" "$boxpath" && exit
